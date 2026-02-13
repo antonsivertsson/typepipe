@@ -57,7 +57,7 @@ class SpotlightWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 
     override func cancelOperation(_ sender: Any?) {
-        NSApp.terminate(nil)
+        (NSApp.delegate as? AppDelegate)?.animateOutAndQuit()
     }
 }
 
@@ -66,18 +66,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var window: SpotlightWindow!
     var textField: NSTextField!
 
+    func animateOutAndQuit() {
+        guard let contentView = window.contentView else {
+            NSApp.terminate(nil)
+            return
+        }
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.5
+            contentView.animator().alphaValue = 0
+        }
+
+        // Spring scale down (Core Animation)
+        let spring = CASpringAnimation(keyPath: "transform")
+        spring.fromValue = CATransform3DIdentity
+        spring.toValue = CATransform3DMakeScale(0.92, 0.92, 1)
+
+        spring.mass = 1
+        spring.stiffness = 260
+        spring.damping = 22
+        spring.initialVelocity = 10
+        spring.duration = spring.settlingDuration
+
+        contentView.layer?.add(spring, forKey: "popOut")
+        contentView.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            NSApp.terminate(nil)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         setupMenu()
 
         let width: CGFloat = 620
         let height: CGFloat = 64
+        let padding: CGFloat = 20
         let screenFrame = NSScreen.main?.frame ?? .zero
 
+        let windowWidth = width + padding * 2
+        let windowHeight = height + padding * 2
+
         window = SpotlightWindow(
-            contentRect: NSRect(x: screenFrame.midX - width/2, y: screenFrame.midY - height/2,
-                width: width,
-                height: height
+            contentRect: NSRect(x: screenFrame.midX - width/2, y: ( screenFrame.midY*1.2 ) - height/2,
+                width: windowWidth,
+                height: windowHeight
             ),
             styleMask: [.borderless],
             backing: .buffered,
@@ -89,13 +123,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let contentView = NSVisualEffectView(frame: window.contentRect(forFrameRect: window.frame))
+        let rootView = NSView(
+            frame: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
+        )
+        rootView.wantsLayer = true
+        rootView.layer?.backgroundColor = NSColor.clear.cgColor
+
+        let contentView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         contentView.material = .hudWindow
         contentView.state = .active
         contentView.blendingMode = .behindWindow
         contentView.wantsLayer = true
         contentView.layer?.cornerRadius = 14
         contentView.layer?.masksToBounds = true
+        contentView.alphaValue = 0
 
         let overlay = NSView(frame: contentView.bounds)
         overlay.wantsLayer = true
@@ -104,7 +145,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.layer?.masksToBounds = true
 
         contentView.addSubview(overlay)
-        window.contentView = contentView
 
         textField = NSTextField(frame: NSRect(x: 20, y: 14, width: width - 40, height: 36))
         textField.isBordered = true
@@ -122,10 +162,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         contentView.addSubview(textField)
 
         // Focus the text field immediately
+        rootView.addSubview(contentView)
+        window.contentView = rootView
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(textField)
 
         NSApp.activate(ignoringOtherApps: true)
+
+        DispatchQueue.main.async {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.15
+                contentView.animator().alphaValue = 1
+            }
+            let spring = CASpringAnimation(keyPath: "transform")
+            spring.fromValue = CATransform3DMakeScale(0.84, 0.84, 1)
+            spring.toValue = CATransform3DIdentity
+            spring.mass = 1
+            spring.stiffness = 320
+            spring.damping = 26
+            spring.initialVelocity = 100
+            spring.duration = spring.settlingDuration
+
+            contentView.layer?.add(spring, forKey: "popIn")
+            contentView.layer?.transform = CATransform3DIdentity
+        }
     }
 
     @objc func submit() {
