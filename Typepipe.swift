@@ -5,6 +5,7 @@ let args = CommandLine.arguments
 if let pIndex = args.firstIndex(of: "-p"), args.count > pIndex + 1 {
     placeholder = args[pIndex + 1]
 }
+let animationsEnabled = CommandLine.arguments.contains("-a")
 
 // Hidden menu to allow copy, paste, select and cut functionality in text field
 func setupMenu() {
@@ -62,11 +63,14 @@ class SpotlightWindow: NSWindow {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-
     var window: SpotlightWindow!
     var textField: NSTextField!
 
     func animateOutAndQuit() {
+        if animationsEnabled == false {
+            NSApp.terminate(nil)
+            return
+        }
         guard let contentView = window.contentView else {
             NSApp.terminate(nil)
             return
@@ -77,10 +81,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             contentView.animator().alphaValue = 0
         }
 
-        // Spring scale down (Core Animation)
         let spring = CASpringAnimation(keyPath: "transform")
         spring.fromValue = CATransform3DIdentity
-        spring.toValue = CATransform3DMakeScale(0.92, 0.92, 1)
+        spring.toValue = CATransform3DMakeScale(0.6, 0.6, 1)
 
         spring.mass = 1
         spring.stiffness = 260
@@ -89,7 +92,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         spring.duration = spring.settlingDuration
 
         contentView.layer?.add(spring, forKey: "popOut")
-        contentView.layer?.transform = CATransform3DMakeScale(0.92, 0.92, 1)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             NSApp.terminate(nil)
@@ -134,9 +136,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         contentView.state = .active
         contentView.blendingMode = .behindWindow
         contentView.wantsLayer = true
-        contentView.layer?.cornerRadius = 14
-        contentView.layer?.masksToBounds = true
-        contentView.alphaValue = 0
+        if let contentViewLayer = contentView.layer {
+            contentViewLayer.cornerRadius = 14
+            contentViewLayer.masksToBounds = true
+            let oldFrame = contentViewLayer.frame
+            contentViewLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            contentViewLayer.frame = oldFrame
+        }
+        contentView.alphaValue = animationsEnabled ? 0 : 1
 
         let overlay = NSView(frame: contentView.bounds)
         overlay.wantsLayer = true
@@ -161,38 +168,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         contentView.addSubview(textField)
 
-        // Focus the text field immediately
         rootView.addSubview(contentView)
         window.contentView = rootView
+
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(textField)
 
         NSApp.activate(ignoringOtherApps: true)
 
-        DispatchQueue.main.async {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.15
-                contentView.animator().alphaValue = 1
-            }
-            let spring = CASpringAnimation(keyPath: "transform")
-            spring.fromValue = CATransform3DMakeScale(0.84, 0.84, 1)
-            spring.toValue = CATransform3DIdentity
-            spring.mass = 1
-            spring.stiffness = 320
-            spring.damping = 26
-            spring.initialVelocity = 100
-            spring.duration = spring.settlingDuration
+        if animationsEnabled {
+            DispatchQueue.main.async {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.15
+                    contentView.animator().alphaValue = 1
+                }
+                let spring = CASpringAnimation(keyPath: "transform")
+                spring.fromValue = CATransform3DMakeScale(0.6, 0.6, 1)
+                spring.toValue = CATransform3DIdentity
+                spring.mass = 1
+                spring.stiffness = 320
+                spring.damping = 26
+                spring.initialVelocity = 10
+                spring.duration = spring.settlingDuration
 
-            contentView.layer?.add(spring, forKey: "popIn")
-            contentView.layer?.transform = CATransform3DIdentity
+                contentView.layer?.add(spring, forKey: "popIn")
+            }
         }
     }
 
     @objc func submit() {
+        // Make text not be highlighted when submitted
+        textField.isSelectable = false
+        window.makeFirstResponder(nil)
+
         let input = textField.stringValue
-        print(input)           // goes to stdout
+        print(input)
         fflush(stdout)
-        NSApp.terminate(nil)
+        animateOutAndQuit()
     }
 }
 
