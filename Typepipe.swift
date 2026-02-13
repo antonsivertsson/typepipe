@@ -136,14 +136,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         contentView.state = .active
         contentView.blendingMode = .behindWindow
         contentView.wantsLayer = true
-        if let contentViewLayer = contentView.layer {
-            contentViewLayer.cornerRadius = 14
-            contentViewLayer.masksToBounds = true
-            let oldFrame = contentViewLayer.frame
-            contentViewLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-            contentViewLayer.frame = oldFrame
-        }
-        contentView.alphaValue = animationsEnabled ? 0 : 1
+        contentView.layer?.cornerRadius = 14
+        contentView.layer?.masksToBounds = true
+        contentView.alphaValue = 0
 
         let overlay = NSView(frame: contentView.bounds)
         overlay.wantsLayer = true
