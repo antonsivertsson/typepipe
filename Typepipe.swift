@@ -138,7 +138,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         contentView.wantsLayer = true
         contentView.layer?.cornerRadius = 14
         contentView.layer?.masksToBounds = true
-        contentView.alphaValue = 0
+        contentView.alphaValue = animationsEnabled ? 0 : 1
 
         let overlay = NSView(frame: contentView.bounds)
         overlay.wantsLayer = true
