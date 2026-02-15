@@ -1,13 +1,40 @@
 import Cocoa
+import Foundation
 
-var placeholder = ""
 let args = CommandLine.arguments
+
+// Version property prints and quits
+let displayVersionAndQuit =
+    CommandLine.arguments.contains("-v") || CommandLine.arguments.contains("--version")
+if displayVersionAndQuit {
+    print("version", Constants.version)
+    fflush(stdout)
+    exit(0)
+}
+
+// Add placeholder if found
+var placeholder = ""
 if let pIndex = args.firstIndex(of: "-p"), args.count > pIndex + 1 {
     placeholder = args[pIndex + 1]
 }
-let animationsEnabled = CommandLine.arguments.contains("-a")
 
-// Hidden menu to allow copy, paste, select and cut functionality in text field
+// Animations on
+let animationsEnabled =
+    CommandLine.arguments.contains("-a") || CommandLine.arguments.contains("--animation")
+
+// Read data from stdin if available
+let stdInput: String
+if isatty(fileno(stdin)) != 0 {
+    stdInput = ""
+} else if let data = try? FileHandle.standardInput.readToEnd(),
+    let input = String(data: data, encoding: .utf8)
+{
+    stdInput = String(input.dropLast())
+} else {
+    stdInput = ""
+}
+
+// Hidden menu to allow copy, paste, select and cut functionality inside text field
 func setupMenu() {
     let mainMenu = NSMenu()
 
@@ -111,7 +138,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let windowHeight = height + padding * 2
 
         window = SpotlightWindow(
-            contentRect: NSRect(x: screenFrame.midX - width/2, y: ( screenFrame.midY*1.2 ) - height/2,
+            contentRect: NSRect(
+                x: screenFrame.midX - width / 2, y: (screenFrame.midY * 1.2) - height / 2,
                 width: windowWidth,
                 height: windowHeight
             ),
@@ -131,7 +159,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         rootView.wantsLayer = true
         rootView.layer?.backgroundColor = NSColor.clear.cgColor
 
-        let contentView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        let contentView = NSVisualEffectView(
+            frame: NSRect(x: 0, y: 0, width: width, height: height))
         contentView.material = .hudWindow
         contentView.state = .active
         contentView.blendingMode = .behindWindow
@@ -158,6 +187,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         textField.backgroundColor = .clear
         textField.font = .systemFont(ofSize: 24)
         textField.placeholderString = placeholder
+        if stdInput != "" {
+            textField.stringValue = stdInput
+        }
         textField.target = self
         textField.action = #selector(submit)
 
