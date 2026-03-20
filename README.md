@@ -20,6 +20,7 @@ brew install typepipe
 ## Usage
 
 ```bash
+# Opens a Typepipe text field
 typepipe -a
 ```
 
@@ -31,7 +32,7 @@ typepipe -a
 
 `typepipe -p "Placeholder text"` - Opens application with placeholder text
 
-`echo "put this text in typepipe" | typepipe` - pipes text from stdin into the text field
+`echo "put this text in typepipe" | typepipe` - pipes text from `stdin` into the text field
 
 ## Examples
 
